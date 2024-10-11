@@ -1,3 +1,4 @@
+import re
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import validates
 db = SQLAlchemy()
@@ -12,7 +13,23 @@ class Author(db.Model):
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
     # Add validators 
-
+    @validates('name')
+    def validate_name(self, key, value):
+        if not value:
+            raise ValueError("Author name must not be empty.")
+        # Check for uniqueness manually
+        existing_author = Author.query.filter_by(name=value).first()
+        if existing_author:
+            raise ValueError("Author name must be unique.")
+        
+        return value
+    
+    @validates('phone_number')
+    def validate_phone_number(self, key, value):
+        if not re.fullmatch(r'\d{10}', value):
+            raise ValueError("Phone number must be exactly 10 digits.")
+        return value
+    
     def __repr__(self):
         return f'Author(id={self.id}, name={self.name})'
 
@@ -28,7 +45,30 @@ class Post(db.Model):
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
     # Add validators  
-
+    @validates('content')
+    def validate_content(self, key, value):
+        if len(value) < 250:
+            raise ValueError("Post content must be at least 250 characters long.")
+        return value
+    
+    @validates('summary')
+    def validate_summary(self, key, value):
+        if len(value) > 250:
+            raise ValueError("Post summary must be at most 250 characters long.")
+        return value
+    
+    @validates('category')
+    def validate_category(self, key, value):
+        if value not in ['Fiction', 'Non-Fiction']:
+            raise ValueError("Post category must be either 'Fiction' or 'Non-Fiction'.")
+        return value
+    
+    @validates('title')
+    def validate_title(self, key, value):
+        clickbait_keywords = ["Won't Believe", "Secret", "Top", "Guess"]
+        if not any(keyword in value for keyword in clickbait_keywords):
+            raise ValueError(f'Title must contain one of the following: {", ".join(clickbait_keywords)}')
+        return value
 
     def __repr__(self):
         return f'Post(id={self.id}, title={self.title} content={self.content}, summary={self.summary})'
